@@ -49,6 +49,8 @@ async fn handle_socket(
         }
     });
 
+    let _ = room_sender.send((my_id, format!("[{} joined the room!]", nickname)));
+
     while let Some(Ok(msg)) = read.next().await {
         if let Message::Text(text) = msg {
             let message = format!("[{}] {}", nickname, text);
