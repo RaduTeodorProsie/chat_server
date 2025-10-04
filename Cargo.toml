@@ -11,3 +11,4 @@ axum = {version = "0.8.6", features = ["ws"]}
 serde = { version = "1.0.188", features = ["derive"] }
 uuid = { version = "1.4.1", features = ["v4", "serde"] }
 
+tokio-tungstenite = "0.28.0"

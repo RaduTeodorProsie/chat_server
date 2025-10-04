@@ -320,6 +320,7 @@ dependencies = [
  "futures",
  "serde",
  "tokio",
+ "tokio-tungstenite",
  "uuid",
 ]
 
