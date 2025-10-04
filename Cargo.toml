@@ -1,0 +1,13 @@
+[package]
+name = "global_chat"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.47.1", features = ["full"] }
+anyhow = "1.0.100"
+futures = "0.3.31"
+axum = {version = "0.8.6", features = ["ws"]}
+serde = { version = "1.0.188", features = ["derive"] }
+uuid = { version = "1.4.1", features = ["v4", "serde"] }
+
