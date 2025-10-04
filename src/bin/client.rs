@@ -36,7 +36,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let room = room.trim_matches(|c| c == '\r' || c == '\n').to_string();
     println!("Nickname: {}, Room: {}", nickname, room);
 
-    let ip = "localhost:8080";
+    let ip = "136.112.202.97:8080";
     let link = format!("ws://{}/login/{}/{}", ip, room, nickname);
 
     println!("Connecting...");
