@@ -1,0 +1,121 @@
+name: Cross-platform Rust Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The git tag to release (e.g., v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  # ===================================================================
+  #  Build Job: Compile on each OS and create a UNIQUE artifact
+  # ===================================================================
+  build:
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bin_name: global_chat
+            asset_name: global_chat-linux-amd64
+            client_bin_name: client
+            client_asset_name: client-linux-amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            bin_name: global_chat
+            asset_name: global_chat-macos-amd64
+            client_bin_name: client
+            client_asset_name: client-macos-amd64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin_name: global_chat.exe
+            asset_name: global_chat-windows-amd64.exe
+            client_bin_name: client.exe
+            client_asset_name: client-windows-amd64.exe
+
+    steps:
+      - name: Checkout repository source code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Build release binaries
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Run tests on macOS (optional)
+        if: matrix.os == 'macos-latest'
+        run: cargo test --release --target ${{ matrix.target }}
+
+      - name: Stage the binaries with their unique release names
+        shell: bash
+        run: |
+          mkdir -p staging
+
+          # move main binary if it exists
+          MAIN_SRC="target/${{ matrix.target }}/release/${{ matrix.bin_name }}"
+          if [ -f "$MAIN_SRC" ]; then
+            mv "$MAIN_SRC" "staging/${{ matrix.asset_name }}"
+            echo "Staged main binary -> staging/${{ matrix.asset_name }}"
+          else
+            echo "Warning: main binary not found at $MAIN_SRC"
+          fi
+
+          # move client binary if it exists
+          CLIENT_SRC="target/${{ matrix.target }}/release/${{ matrix.client_bin_name }}"
+          if [ -f "$CLIENT_SRC" ]; then
+            mv "$CLIENT_SRC" "staging/${{ matrix.client_asset_name }}"
+            echo "Staged client binary -> staging/${{ matrix.client_asset_name }}"
+          else
+            echo "Warning: client binary not found at $CLIENT_SRC"
+          fi
+
+          ls -l staging || true
+
+      - name: Upload the unique binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: staging/*
+          retention-days: 1
+
+  # ===================================================================
+  #  Release Job: Download all unique artifacts and upload individually
+  # ===================================================================
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: success()
+
+    steps:
+      - name: Download all release binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: final-assets/
+          merge-multiple: true
+
+      - name: Display structure of downloaded files
+        run: ls -lR final-assets/
+
+      - name: Create GitHub Release and Upload Assets
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "final-assets/*"
+          tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.tag }}
+          generateReleaseNotes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
